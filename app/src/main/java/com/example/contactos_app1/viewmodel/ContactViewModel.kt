@@ -24,6 +24,10 @@ class ContactViewModel(application: Application) :
     private val dao = AppDatabase.getDatabase(application).contactDao()
     private val syncDao = AppDatabase.getDatabase(application).syncQueueDao()
 
+    // ✅ Mapa para guardar la página actual de cada contacto
+    private val _currentPages = mutableMapOf<Int, Int>()
+    val currentPages: Map<Int, Int> = _currentPages
+
     init {
         syncFromLaravel()
         startAutoSync()
@@ -38,6 +42,17 @@ class ContactViewModel(application: Application) :
 
     fun getContactById(id: Int): Flow<Contact?> {
         return dao.getContactById(id)
+    }
+
+    // ✅ Función para guardar la página actual de un contacto
+    fun saveCurrentPage(contactId: Int, page: Int) {
+        _currentPages[contactId] = page
+        println("Página guardada para contacto $contactId: $page")
+    }
+
+    // ✅ Función para obtener la página guardada de un contacto
+    fun getCurrentPage(contactId: Int): Int {
+        return _currentPages[contactId] ?: 0
     }
 
     // ===================== CREATE =====================
@@ -76,12 +91,17 @@ class ContactViewModel(application: Application) :
                 )
             )
             dao.delete(contact)
+
+            // ✅ Limpiar la página guardada cuando se elimina el contacto
+            _currentPages.remove(contact.id)
         }
     }
 
     fun deleteAll() {
         viewModelScope.launch {
             dao.deleteAll()
+            // ✅ Limpiar todas las páginas guardadas
+            _currentPages.clear()
         }
     }
 
