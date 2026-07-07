@@ -13,7 +13,7 @@ interface ContactDao {
     fun getContactById(id: Int): Flow<Contact?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(contact: Contact)
+    suspend fun insert(contact: Contact): Long
 
     @Update
     suspend fun update(contact: Contact)
@@ -23,4 +23,7 @@ interface ContactDao {
 
     @Query("DELETE FROM contacts")
     suspend fun deleteAll()
+
+    @Query("SELECT * FROM contacts WHERE id = :id")
+    suspend fun getContactByIdSync(id: Int): Contact?
 }

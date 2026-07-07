@@ -37,7 +37,7 @@ fun ContactListScreen(
 ) {
     val contacts by viewModel.contacts.collectAsState()
     var searchText by remember { mutableStateOf("") }
-    val primaryBlue = Color(0xFF425A92)
+    val primaryBlue = Color(0xFF0F172A)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -186,7 +186,7 @@ fun ContactListScreen(
 
 @Composable
 fun SectionHeader(text: String) {
-    val primaryBlue = Color(0xFF425A92)
+    val primaryBlue = Color(0xFF0F172A)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,7 +225,7 @@ fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, message: S
 
 @Composable
 fun ContactItem(contact: Contact, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val primaryBlue = Color(0xFF425A92)
+    val primaryBlue = Color(0xFF0F172A)
     Card(
         modifier = modifier
             .fillMaxWidth()

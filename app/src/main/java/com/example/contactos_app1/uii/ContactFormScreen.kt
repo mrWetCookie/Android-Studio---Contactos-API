@@ -37,6 +37,9 @@ import com.example.contactos_app1.data.Contact
 import com.example.contactos_app1.viewmodel.ContactViewModel
 import io.michaelrocks.libphonenumber.android.PhoneNumberUtil
 import java.util.Locale
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.contactos_app1.R
 
 data class CountryCode(val name: String, val code: String, val flag: String)
 
@@ -92,8 +95,8 @@ fun ContactFormScreen(
     var phone by remember { 
         mutableStateOf(
             if (initialFullPhone.startsWith("+")) {
-                initialFullPhone.substringAfter(lada).trim()
-            } else initialFullPhone
+                initialFullPhone.substringAfter(lada).trim().filter { it.isDigit() }.take(10)
+            } else initialFullPhone.filter { it.isDigit() }.take(10)
         ) 
     }
     
@@ -107,6 +110,7 @@ fun ContactFormScreen(
     }
 
     var nameError by remember { mutableStateOf(false) }
+    var nameExistsError by remember { mutableStateOf(false) }
     var phoneError by remember { mutableStateOf(false) }
     var ladaError by remember { mutableStateOf(false) }
     var phoneExistsError by remember { mutableStateOf(false) }
@@ -115,7 +119,7 @@ fun ContactFormScreen(
     var showCountryDialog by remember { mutableStateOf(false) }
     var countrySearchQuery by remember { mutableStateOf("") }
 
-    val primaryBlue = Color(0xFF425A92)
+    val primaryBlue = Color(0xFF0F172A)
 
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -203,8 +207,17 @@ fun ContactFormScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(380.dp)
-                    .background(primaryBlue)
             ) {
+
+                // Fondo por defecto
+                Image(
+                    painter = painterResource(R.drawable.wallpaper_telegram),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Si el usuario eligió un banner, lo muestra encima
                 if (bannerUri != null) {
                     AsyncImage(
                         model = bannerUri,
@@ -213,6 +226,13 @@ fun ContactFormScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+
+                // Oscurece un poco la imagen
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.30f))
+                )
 
                 Box(
                     modifier = Modifier
@@ -320,14 +340,22 @@ fun ContactFormScreen(
 
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { if (it.length <= 20) { name = it; nameError = false } },
+                    onValueChange = { 
+                        if (it.length <= 25) { 
+                            name = it.replace("\n", "")
+                            nameError = false 
+                            nameExistsError = name.trim().isNotEmpty() && contacts.any { c -> c.name.equals(name.trim(), ignoreCase = true) && c.id != id }
+                        } 
+                    },
                     label = { Text("Nombre") },
                     leadingIcon = { Icon(Icons.Default.Person, null, tint = primaryBlue) },
-                    isError = nameError,
+                    isError = nameError || nameExistsError,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
                 )
-                if (nameError) ErrorText("Mínimo 3 caracteres")
+                if (nameError) ErrorText("El nombre es obligatorio")
+                if (nameExistsError) ErrorText("Ya existe un contacto con este nombre")
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -335,17 +363,17 @@ fun ContactFormScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { 
-                        email = it
+                        email = it.replace("\n", "").trim()
                         emailError = email.isNotEmpty() && !Patterns.EMAIL_ADDRESS.matcher(email).matches()
-
                         emailExistsError = email.isNotEmpty() && contacts.any { it.email.equals(email, ignoreCase = true) && it.id != id }
                     },
-                    label = { Text("Correo") },
+                    label = { Text("Correo (Opcional)") },
                     leadingIcon = { Icon(Icons.Default.Email, null, tint = primaryBlue) },
                     isError = emailError || emailExistsError,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    singleLine = true
                 )
                 if (emailError) ErrorText("Correo electrónico inválido")
                 if (emailExistsError) ErrorText("Este correo ya está registrado")
@@ -356,27 +384,14 @@ fun ContactFormScreen(
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { input ->
-                        if (input.startsWith("+")) {
-                            val matchedCountry = allCountries.sortedByDescending { it.code.length }
-                                .find { input.startsWith(it.code) }
-                            
-                            if (matchedCountry != null) {
-                                lada = matchedCountry.code
-                                ladaError = false
-                                phone = input.removePrefix(matchedCountry.code).trim().filter { it.isDigit() }.take(15)
-                            } else {
-                                phone = input.take(16)
-                            }
-                        } else {
-                            val filtered = input.filter { it.isDigit() }
-                            if (filtered.length <= 15) {
-                                phone = filtered
-                                phoneExistsError = contacts.any { "${lada} ${phone}" == it.phone && it.id != id }
-                                phoneError = false
-                            }
+                        val filtered = input.replace("\n", "").filter { it.isDigit() }
+                        if (filtered.length <= 10) {
+                            phone = filtered
+                            phoneExistsError = phone.length == 10 && contacts.any { it.phone == "${lada} ${phone}" && it.id != id }
+                            phoneError = false
                         }
                     },
-                    label = { Text("Teléfono") },
+                    label = { Text("Teléfono (10 dígitos)") },
                     leadingIcon = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -395,23 +410,43 @@ fun ContactFormScreen(
                     isError = phoneError || phoneExistsError || ladaError,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    singleLine = true
                 )
                 
                 if (ladaError) ErrorText("Lada no válida")
-                if (phoneError) ErrorText("Número inválido (7-15 dígitos)")
+                if (phoneError) ErrorText("El teléfono debe tener exactamente 10 dígitos")
                 if (phoneExistsError) ErrorText("Este número ya existe")
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = {
-                        nameError = name.length < 3
-                        phoneError = phone.length < 7
+                        nameError = name.isBlank()
+                        phoneError = phone.length != 10
                         ladaError = lada.isEmpty()
-                        
-                        if (!nameError && !phoneError && !ladaError && !phoneExistsError && !emailError && !emailExistsError) {
-                            val contact = Contact(id = id, name = name, phone = "${lada} ${phone}", email = email, imageUri = imageUri?.toString(), bannerUri = bannerUri?.toString(), isFavorite = isFavorite)
+
+                        nameExistsError = name.trim().isNotEmpty() && contacts.any { c -> c.name.equals(name.trim(), ignoreCase = true) && c.id != id }
+                        phoneExistsError = phone.length == 10 && contacts.any { it.phone == "${lada} ${phone}" && it.id != id }
+
+                        if (!nameError && !nameExistsError && !phoneError && !ladaError && !phoneExistsError && !emailError && !emailExistsError) {
+                            // ✅ Genera email si está vacío
+                            val finalEmail = if (email.isBlank()) {
+                                name.trim().lowercase().replace(" ", ".") + "@example.com"
+                            } else {
+                                email.trim()
+                            }
+
+                            val contact = Contact(
+                                id = id,
+                                name = name.trim(),
+                                phone = "${lada} ${phone}",
+                                email = finalEmail,  // ← Usa el email generado
+                                imageUri = imageUri?.toString(),
+                                bannerUri = bannerUri?.toString(),
+                                isFavorite = isFavorite
+                            )
+
                             if (id == 0) viewModel.insert(contact) else viewModel.update(contact)
                             navController.popBackStack()
                         }

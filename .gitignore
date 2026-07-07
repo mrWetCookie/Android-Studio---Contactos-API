@@ -1,15 +1,47 @@
+# Archivos de Android Studio
 *.iml
-.gradle
+.gradle/
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Archivos de Gradle
+gradle-wrapper.jar
+gradlew
+gradlew.bat
+
+# Archivos de sistema
+*.log
+*.lock
+
+# Archivos de usuario
+.idea/caches/
+.idea/libraries/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/.name
+.idea/compiler.xml
+.idea/copyright/profiles_settings.xml
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/scopes/scope_settings.xml
+.idea/vcs.xml
+.idea/modules/
+.idea/runConfigurations/
+.idea/dictionaries/
+.idea/shelf/
+.idea/**/gradle.xml
+.idea/**/uiDesigner.xml
+
+# Keystore files
+*.jks
+*.keystore
+google-services.json
+
+# Firebase
+google-services.json

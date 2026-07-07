@@ -10,7 +10,7 @@ data class Contact(
     val name: String,
     val phone: String,
     val email: String,
-    val imageUri: String? = null,
+    val imageUri: String? = null,  // Para tu base de datos local
     val bannerUri: String? = null,
     val isFavorite: Boolean = false
 )

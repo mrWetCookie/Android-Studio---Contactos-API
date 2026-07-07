@@ -33,6 +33,18 @@ import coil.compose.AsyncImage
 import com.example.contactos_app1.viewmodel.ContactViewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.LaunchedEffect
+import com.example.contactos_app1.data.api.RetrofitClient
+import com.example.contactos_app1.data.api.UserResponse
+import androidx.compose.foundation.Image
+import com.example.contactos_app1.R
+import androidx.compose.ui.res.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +55,21 @@ fun ContactDetailScreen(
 ) {
     val context = LocalContext.current
     val contact = viewModel.contacts.collectAsState().value.find { it.id == id }
-    val primaryBlue = Color(0xFF425A92)
-    
+    val primaryBlue = Color(0xFF0F172A)
+
+    var userResponse by remember { mutableStateOf<UserResponse?>(null) }
+
+    LaunchedEffect(id) {
+        try {
+            val response = RetrofitClient.api.getUser(id)
+            if (response.isSuccessful) {
+                userResponse = response.body()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
@@ -102,7 +127,7 @@ fun ContactDetailScreen(
                 ) {
                     Text("Escanea para guardar", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
 
                     val vCard = "BEGIN:VCARD\n" +
                                 "VERSION:3.0\n" +
@@ -110,9 +135,9 @@ fun ContactDetailScreen(
                                 "TEL;TYPE=CELL:${contact.phone}\n" +
                                 "EMAIL:${contact.email}\n" +
                                 "END:VCARD"
-                    
+
                     val qrBitmap = remember(vCard) { generateQRCode(vCard) }
-                    
+
                     qrBitmap?.let {
                         Image(
                             bitmap = it.asImageBitmap(),
@@ -120,11 +145,11 @@ fun ContactDetailScreen(
                             modifier = Modifier.size(250.dp)
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(contact.name, fontWeight = FontWeight.Medium, color = primaryBlue)
                     Text(contact.phone, color = Color.Gray, fontSize = 14.sp)
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = { showQrDialog = false },
@@ -159,23 +184,28 @@ fun ContactDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(380.dp)
-                            .background(primaryBlue)
                     ) {
-                        if (it.bannerUri != null) {
-                            AsyncImage(
-                                model = it.bannerUri,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
 
+                        Image(
+                            painter = painterResource(R.drawable.wallpaper_telegram),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        // Capa oscura para mejorar la legibilidad
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.30f))
+                        )
 
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .statusBarsPadding()
-                        ) {
+                        )
+                        {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -190,7 +220,7 @@ fun ContactDetailScreen(
                                 ) {
                                     Icon(Icons.Default.ArrowBack, null, tint = Color.White, modifier = Modifier.padding(8.dp))
                                 }
-                                
+
                                 Row {
                                     Surface(
                                         shape = CircleShape,
@@ -239,7 +269,11 @@ fun ContactDetailScreen(
                                 .padding(top = 60.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
-                        ) {
+                        ) {val pagerState = rememberPagerState(
+                            pageCount = {
+                                userResponse?.images?.size ?: 1
+                            }
+                        )
                             Box(
                                 modifier = Modifier
                                     .size(170.dp)
@@ -247,16 +281,72 @@ fun ContactDetailScreen(
                                     .background(Color.White.copy(alpha = 0.2f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (it.imageUri != null) {
+                                if (!userResponse?.images.isNullOrEmpty()) {
+
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) { page ->
+
+                                        AsyncImage(
+                                            model = userResponse!!.images[page].url,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+
+                                    }
+
+                                } else if (it.imageUri != null) {
+
                                     AsyncImage(
                                         model = it.imageUri,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
+
                                 } else {
-                                    Text(it.name.first().uppercase(), style = MaterialTheme.typography.displayLarge, color = Color.White, fontWeight = FontWeight.Bold)
+
+                                    Text(
+                                        it.name.first().uppercase(),
+                                        style = MaterialTheme.typography.displayLarge,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
                                 }
+                            }
+                            if (!userResponse?.images.isNullOrEmpty()) {
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+
+                                    repeat(userResponse!!.images.size) { index ->
+
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(horizontal = 4.dp)
+                                                .size(
+                                                    if (pagerState.currentPage == index) 10.dp else 8.dp
+                                                )
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (pagerState.currentPage == index)
+                                                        Color.White
+                                                    else
+                                                        Color.White.copy(alpha = 0.35f)
+                                                )
+                                        )
+
+                                    }
+
+                                }
+
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
@@ -296,7 +386,7 @@ fun ContactDetailScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(50.dp)) 
+                Spacer(modifier = Modifier.height(50.dp))
 
                 Card(
                     modifier = Modifier
@@ -347,7 +437,7 @@ fun ActionDetailButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
             shadowElevation = 4.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Color(0xFF425A92), modifier = Modifier.size(24.dp))
+                Icon(icon, null, tint = Color(0xFF0F172A), modifier = Modifier.size(24.dp))
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -358,7 +448,7 @@ fun ActionDetailButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 @Composable
 fun DetailInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Color(0xFF425A92), modifier = Modifier.size(24.dp))
+        Icon(icon, null, tint = Color(0xFF0F172A), modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(label, fontSize = 11.sp, color = Color.Gray)
